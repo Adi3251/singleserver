@@ -1,5 +1,6 @@
 #!/bin/bash  
 # this is Shebang script using /bin/bash to run commands
+set -euo pipefail
 
 ################################################################################################
 # Jenkins Installation
@@ -65,6 +66,7 @@ sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plug
 
 usermod -aG docker jenkins
 apt install unzip -y
+systemctl enable --now docker
 
 ###########################################################################################
 # To install AWS CLI V2
@@ -76,20 +78,11 @@ sudo ./aws/install
 ###########################################################################################
 # To install kubectl
 ###########################################################################################
- curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-
- curl -LO https://dl.k8s.io/release/v1.28.3/bin/linux/amd64/kubectl
-
- curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
-   
+KUBECTL_VERSION="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
+curl -fsSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+curl -fsSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256"
 echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
-
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
-chmod +x kubectl
-mkdir -p ~/.local/bin
-mv ./kubectl ~/.local/bin/kubectl
-# and then append (or prepend) ~/.local/bin to $PATH
+install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 ###########################################################################################
 # To install maven
@@ -97,7 +90,41 @@ mv ./kubectl ~/.local/bin/kubectl
 apt update -y
 apt install maven -y
 
-sudo chmod 666 /var/run/docker.sock
-
-
 sudo systemctl restart jenkins
+
+################################################################################################
+# SonarQube and Nexus containers
+################################################################################################
+
+cat > /etc/sysctl.d/99-sonarqube.conf <<'EOF'
+vm.max_map_count=524288
+fs.file-max=131072
+EOF
+sysctl --system
+
+docker volume create sonarqube_data
+docker volume create sonarqube_extensions
+docker volume create sonarqube_logs
+docker volume create nexus_data
+
+docker run -d \
+  --name sonar-server \
+  --restart unless-stopped \
+  --memory=3g \
+  --cpus=2 \
+  --ulimit nofile=131072:131072 \
+  --ulimit nproc=8192:8192 \
+  -p 9000:9000 \
+  -v sonarqube_data:/opt/sonarqube/data \
+  -v sonarqube_extensions:/opt/sonarqube/extensions \
+  -v sonarqube_logs:/opt/sonarqube/logs \
+  sonarqube:community
+
+docker run -d \
+  --name nexus-server \
+  --restart unless-stopped \
+  --memory=3g \
+  --cpus=2 \
+  -p 8081:8081 \
+  -v nexus_data:/nexus-data \
+  sonatype/nexus3
