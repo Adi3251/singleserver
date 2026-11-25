@@ -1,23 +1,16 @@
-# terraform-vpc-jenkins-DB
+# singleserver
 
-This is the code for creating infrastructure in AWS cloud.  when you install terraform and aws cli and configure aws cli this code will run.
+This project creates Jenkins, Nexus, and SonarQube infrastructure in AWS using Terraform.
 
-# in order to run this code do following steps
+## Run the code
 
-# create bucket with your favorite name and update same in backend.tf file
+Create an S3 bucket with a unique name and update `backend.tf` with that bucket name.
 
-# terraform init
-this will initiate repo and and install necessory files
+```bash
+terraform init
+terraform validate
+terraform plan
+terraform apply
+```
 
-# terraform validate
-this will validate packgaes and config
-
-# terraform plan
-this will create executionn plan 
-
-# terraform apply
-this will apply that execution plan in AWS cloud
-
-
-# terraform destroy
-It will destroy all the resources created with this code
+Use `terraform destroy` to remove the resources created by this code.
