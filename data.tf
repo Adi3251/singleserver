@@ -2,3 +2,5 @@ data "aws_availability_zones" "available" {  # "aws_availability_zones" helps to
   state = "available" # only available az are selected
 
 }
+
+
